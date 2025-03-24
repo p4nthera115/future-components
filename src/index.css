@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #fff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.noise {
+  background:
+    repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px,
+    repeating-conic-gradient(#000 0 0.0001%, #fff 0 0.0002%) 60% 60%/2500px 2500px;
+  background-blend-mode: difference;
+  animation: b .2s infinite alternate;
+}
+
+@keyframes b {
+  100% {
+    background-position: 50% 0, 60% 50%
+  }
+}
+
+@keyframes panImage {
+  0% {
+    transform: scale(1) translate(0%, 0%);
+  }
+
+  20% {
+    transform: scale(1) translate(2%, 12%);
+  }
+
+  20.0001% {
+    /* -- View 2 -- */
+    transform: scale(1) translate(2%, 12%);
+  }
+
+  40% {
+    transform: scale(1) translate(12%, 5%);
+  }
+
+  40.0001% {
+    /* -- View 3 -- */
+    transform: scale(1) translate(12%, 5%);
+  }
+
+  60% {
+    transform: scale(1) translate(20%, 0%);
+  }
+
+  60.0001% {
+    /* -- View 4 -- */
+    transform: scale(1) translate(20%, 0%);
+  }
+
+  80% {
+    transform: scale(1) translate(-2%, 15%);
+  }
+
+  80.0001% {
+    /* -- View 5 -- */
+    transform: scale(1) translate(-2%, 15%);
+  }
+
+  100% {
+    transform: scale(1) translate(18%, 10%);
+  }
+}
+
+.camera {
+  animation: panImage 40s linear infinite;
+}
