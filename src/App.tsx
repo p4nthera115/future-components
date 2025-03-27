@@ -1,4 +1,4 @@
-import IdCard from "./components/IdCard";
+// import IdCard from "./components/IdCard";
 import IdCardBlack from "./components/IdCardBlack";
 
 export default function App() {
