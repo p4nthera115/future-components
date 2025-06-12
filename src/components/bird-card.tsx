@@ -13,10 +13,10 @@ export default function BirdCard() {
   const planeRef = useRef<THREE.Mesh>(null)
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-dvh">
       <Leva collapsed />
       <Canvas className="border" camera={{ position: [0, 0, 2] }}>
-        <OrbitControls />
+        <OrbitControls enableZoom={false} />
         <directionalLight intensity={2} position={[0, 2, 3]} />
         <Environment preset="city" />
 
@@ -31,30 +31,34 @@ export default function BirdCard() {
         </Text>
 
         <mesh ref={planeRef} position={[0, 0, 0.2]}>
-          {/* No props needed here, everything is handled by leva */}
-          <ExtrudedPlane />
+          <ExtrudedPlane height={0.3} width={1} borderRadius={0.5} />
         </mesh>
       </Canvas>
     </div>
   )
 }
 
-function ExtrudedPlane() {
-  // NEW: Grouped geometry controls together, including borderRadius
+interface ExtrudedPlaneProps {
+  height: number
+  width: number
+  borderRadius: number
+}
+
+function ExtrudedPlane({ height, width, borderRadius }: ExtrudedPlaneProps) {
   const geomControls = useControls("geometry", {
-    width: { value: 1.5, min: 0.1, max: 5, step: 0.1 },
-    height: { value: 1, min: 0.1, max: 5, step: 0.1 },
-    borderRadius: { value: 0.2, min: 0, max: 0.5, step: 0.01 },
+    width: { value: width, min: 0.1, max: 5, step: 0.1 },
+    height: { value: height, min: 0.1, max: 5, step: 0.1 },
+    borderRadius: { value: borderRadius, min: 0, max: 0.5, step: 0.01 },
   })
 
   const extrudeControls = useControls("extrude", {
     steps: { value: 2, min: 1, max: 10, step: 1 },
-    depth: { value: 0.1, min: 0, max: 1, step: 0.01 },
+    depth: { value: 0, min: 0, max: 1, step: 0.01 },
     bevelEnabled: { value: true, type: LevaInputs.BOOLEAN },
     bevelThickness: { value: 0.02, min: 0, max: 1, step: 0.01 },
     bevelSize: { value: 0.02, min: 0, max: 1, step: 0.01 },
     bevelOffset: { value: 0, min: 0, max: 1, step: 0.01 },
-    bevelSegments: { value: 8, min: 1, max: 100, step: 1 },
+    bevelSegments: { value: 57, min: 1, max: 100, step: 1 },
   })
 
   const materialProps = useControls("transmission", {
