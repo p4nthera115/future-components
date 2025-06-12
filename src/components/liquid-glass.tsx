@@ -8,11 +8,12 @@ interface LiquidGlassProps {
   width: number
   borderRadius: number
   position: [number, number, number]
-  transmission: number
-  roughness: number
-  ior: number
-  chromaticAberration: number
-  color: THREE.Color
+  transmission?: number
+  roughness?: number
+  ior?: number
+  chromaticAberration?: number
+  color?: THREE.Color
+  backside?: boolean
 }
 
 export default function LiquidGlass({
@@ -20,17 +21,18 @@ export default function LiquidGlass({
   width,
   borderRadius,
   position,
-  transmission,
-  roughness,
-  ior,
-  chromaticAberration,
-  color,
+  transmission = 1,
+  roughness = 0,
+  ior = 1.2, // controls edge distortion
+  chromaticAberration = 0,
+  color = new THREE.Color(1, 1, 1),
+  backside = true,
 }: LiquidGlassProps) {
-  const geomControls = useControls("geometry", {
-    width: { value: width, min: 0.1, max: 5, step: 0.1 },
-    height: { value: height, min: 0.1, max: 5, step: 0.1 },
-    borderRadius: { value: borderRadius, min: 0, max: 0.5, step: 0.01 },
-  })
+  // const geomControls = useControls("geometry", {
+  //   width: { value: width, min: 0.1, max: 5, step: 0.1 },
+  //   height: { value: height, min: 0.1, max: 5, step: 0.1 },
+  //   borderRadius: { value: borderRadius, min: 0, max: 0.5, step: 0.01 },
+  // })
 
   const extrudeControls = useControls("extrude", {
     steps: { value: 2, min: 1, max: 10, step: 1 },
@@ -48,11 +50,10 @@ export default function LiquidGlass({
     // transmission: { value: 1, min: 0, max: 1, step: 0.1 },
     // ior: { value: 1.2, min: 0, max: 3, step: 0.1 },
     // chromaticAberration: { value: 0.02, min: 0, max: 1 },
-    backside: { value: true },
+    // backside: { value: true },
   })
 
   const shape = useMemo(() => {
-    const { width, height, borderRadius } = geomControls
     const x = -width / 2
     const y = -height / 2
     const r = Math.min(borderRadius, width / 2, height / 2)
@@ -71,7 +72,7 @@ export default function LiquidGlass({
     s.closePath()
 
     return s
-  }, [geomControls])
+  }, [])
 
   const extrudeSettings = useMemo(
     () => ({
@@ -90,6 +91,7 @@ export default function LiquidGlass({
         roughness={roughness}
         ior={ior}
         chromaticAberration={chromaticAberration}
+        backside={backside}
       />
     </mesh>
   )
