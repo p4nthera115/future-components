@@ -1,10 +1,4 @@
-import {
-  Environment,
-  OrbitControls,
-  Image,
-  Text,
-  Html,
-} from "@react-three/drei"
+import { Environment, OrbitControls, Text } from "@react-three/drei"
 import { Canvas } from "@react-three/fiber"
 import { Leva } from "leva"
 import LiquidGlass from "./liquid-glass"
