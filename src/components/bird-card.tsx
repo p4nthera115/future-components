@@ -1,4 +1,10 @@
-import { Environment, OrbitControls, Image, Text } from "@react-three/drei"
+import {
+  Environment,
+  OrbitControls,
+  Image,
+  Text,
+  Html,
+} from "@react-three/drei"
 import { Canvas } from "@react-three/fiber"
 import { Leva } from "leva"
 import LiquidGlass from "./liquid-glass"
@@ -58,29 +64,28 @@ export default function BirdCard() {
         <OrbitControls />
         <Environment preset="city" />
         <CursorLight />
-        <Image url="./apple-drone.png" />
 
-        {/* <Text
+        {/* <Image url="./apple-drone.png" /> */}
+        <Text
+          font="./fonts/Geist/Geist-VariableFont_wght.ttf"
           position={[0, 0, -0]}
           fontSize={0.5}
           color="black"
           anchorX="center"
           anchorY="middle"
         >
-          hello
-        </Text> */}
+          liquid
+        </Text>
 
-        <mesh position={[0, 0, 0.2]}>
-          <LiquidGlass
-            height={0.5}
-            width={1}
-            borderRadius={0.2}
-            position={[0, 0, 0.1]}
-            ior={1.2} // this controls the edge distortion
-            backside={true}
-            roughness={0.1}
-          />
-        </mesh>
+        <LiquidGlass
+          height={0.5}
+          width={1}
+          borderRadius={0.2}
+          position={[0, 0, 0.1]}
+          ior={1.3} // this controls the edge distortion
+          backside={true}
+          roughness={0.1}
+        />
       </Canvas>
     </div>
   )
