@@ -64,7 +64,7 @@ export default function BirdCard() {
           font="./fonts/Geist/Geist-VariableFont_wght.ttf"
           position={[0, 0, -0]}
           fontSize={0.5}
-          color="black"
+          color="white"
           anchorX="center"
           anchorY="middle"
         >
@@ -74,12 +74,17 @@ export default function BirdCard() {
         <LiquidGlass
           height={0.5}
           width={1}
-          borderRadius={0.2}
+          borderRadius={1}
           position={[0, 0, 0.1]}
           ior={1.3} // this controls the edge distortion
           backside={true}
           roughness={0.1}
         />
+
+        <mesh receiveShadow position={[0, 0, -0.1]}>
+          <planeGeometry args={[4, 4]} />
+          <meshBasicMaterial color={"#000000"} />
+        </mesh>
       </Canvas>
     </div>
   )
