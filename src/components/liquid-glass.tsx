@@ -34,7 +34,7 @@ export default function LiquidGlass({
   position,
   transmission = 1,
   roughness = 0,
-  ior = 1.2, // controls edge distortion
+  ior = 1.2,
   chromaticAberration = 0,
   color = new THREE.Color(1, 1, 1),
   backside = true,
@@ -42,95 +42,6 @@ export default function LiquidGlass({
 }: LiquidGlassProps) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const [hovered, setHovered] = useState(false)
-
-  // Animation state
-  const animationState = useRef({
-    targetScale: 1,
-    currentScale: 1,
-    velocity: 0,
-    isAnimating: false,
-    isPressed: false,
-  })
-
-  // Elastic spring animation using useFrame
-  useFrame((state, delta) => {
-    if (!meshRef.current) return
-
-    const { targetScale, currentScale, velocity } = animationState.current
-
-    // Spring physics parameters
-    const springStrength = 15 // How strong the spring force is
-    const damping = 0.7 // How much to dampen the oscillation
-    const threshold = 0.001 // When to stop animating
-
-    // Calculate spring force
-    const displacement = targetScale - currentScale
-    const springForce = displacement * springStrength
-
-    // Update velocity with spring force and damping
-    animationState.current.velocity = (velocity + springForce * delta) * damping
-
-    // Update current scale
-    animationState.current.currentScale =
-      currentScale + animationState.current.velocity * delta * 50
-
-    // Debug logging
-    console.log("Animation state:", {
-      targetScale,
-      currentScale: animationState.current.currentScale,
-      velocity: animationState.current.velocity,
-      displacement,
-      springForce,
-    })
-
-    // Check if we should stop animating
-    if (
-      Math.abs(displacement) < threshold &&
-      Math.abs(animationState.current.velocity) < threshold
-    ) {
-      animationState.current.currentScale = targetScale
-      animationState.current.velocity = 0
-      animationState.current.isAnimating = false
-      console.log("Animation stopped")
-    }
-
-    // Apply the scale to the mesh
-    meshRef.current.scale.setScalar(animationState.current.currentScale)
-    console.log("Applied scale:", meshRef.current.scale.x)
-  })
-
-  const handlePointerEnter = () => {
-    console.log("Pointer entered - setting target scale to 1.2")
-    setHovered(true)
-    if (!animationState.current.isPressed) {
-      animationState.current.targetScale = 1.2
-      animationState.current.isAnimating = true
-    }
-  }
-
-  const handlePointerLeave = () => {
-    console.log("Pointer left - setting target scale to 1")
-    setHovered(false)
-    if (!animationState.current.isPressed) {
-      animationState.current.targetScale = 1
-      animationState.current.isAnimating = true
-    }
-  }
-
-  const handlePointerDown = () => {
-    console.log("Pointer down - setting target scale to 1.0")
-    animationState.current.isPressed = true
-    animationState.current.targetScale = 1.1
-    animationState.current.isAnimating = true
-  }
-
-  const handlePointerUp = () => {
-    console.log("Pointer up - restoring scale")
-    animationState.current.isPressed = false
-    // Return to hover state if still hovering, otherwise return to normal
-    animationState.current.targetScale = hovered ? 1.2 : 1
-    animationState.current.isAnimating = true
-  }
 
   const extrudeControls = useControls("extrude", {
     steps: { value: 2, min: 1, max: 10, step: 1 },
@@ -151,12 +62,10 @@ export default function LiquidGlass({
     const y = -height / 2
     const r = Math.min(borderRadius, width / 2, height / 2)
 
-    // Number of segments for each rounded corner
     const cornerSegments = 30
 
     const s = new THREE.Shape()
 
-    // Helper function to create segmented quadratic curve
     const addSegmentedQuadraticCurve = (
       startX: number,
       startY: number,
@@ -171,7 +80,6 @@ export default function LiquidGlass({
         const invT = 1 - t
         const invT2 = invT * invT
 
-        // Quadratic Bezier formula: B(t) = (1-t)²P₀ + 2(1-t)tP₁ + t²P₂
         const px = invT2 * startX + 2 * invT * t * controlX + t2 * endX
         const py = invT2 * startY + 2 * invT * t * controlY + t2 * endY
 
@@ -183,60 +91,36 @@ export default function LiquidGlass({
       }
     }
 
-    // Start position
     s.moveTo(x, y + r)
-
-    // Left edge
     s.lineTo(x, y + height - r)
 
-    // Top-left corner
     addSegmentedQuadraticCurve(
       x,
-      y + height - r, // start point
+      y + height - r,
       x,
-      y + height, // control point
+      y + height,
       x + r,
-      y + height // end point
+      y + height
     )
 
-    // Top edge
     s.lineTo(x + width - r, y + height)
 
-    // Top-right corner
     addSegmentedQuadraticCurve(
       x + width - r,
-      y + height, // start point
+      y + height,
       x + width,
-      y + height, // control point
+      y + height,
       x + width,
-      y + height - r // end point
+      y + height - r
     )
 
-    // Right edge
     s.lineTo(x + width, y + r)
 
-    // Bottom-right corner
-    addSegmentedQuadraticCurve(
-      x + width,
-      y + r, // start point
-      x + width,
-      y, // control point
-      x + width - r,
-      y // end point
-    )
+    addSegmentedQuadraticCurve(x + width, y + r, x + width, y, x + width - r, y)
 
-    // Bottom edge
     s.lineTo(x + r, y)
 
-    // Bottom-left corner
-    addSegmentedQuadraticCurve(
-      x + r,
-      y, // start point
-      x,
-      y, // control point
-      x,
-      y + r // end point
-    )
+    addSegmentedQuadraticCurve(x + r, y, x, y, x, y + r)
 
     s.closePath()
 
@@ -249,6 +133,130 @@ export default function LiquidGlass({
     }),
     [extrudeControls]
   )
+
+  // Fixed animation state with separate velocities
+  const animationState = useRef({
+    targetScale: 1,
+    currentScale: 1,
+    scaleVelocity: 0,
+    targetPosition: [position[0], position[1], position[2]] as [
+      number,
+      number,
+      number
+    ],
+    currentPosition: [position[0], position[1], position[2]] as [
+      number,
+      number,
+      number
+    ],
+    positionVelocity: [0, 0, 0] as [number, number, number],
+    isPressed: false,
+  })
+
+  // Fixed spring animation
+  useFrame((state, delta) => {
+    if (!meshRef.current) return
+
+    const state_ = animationState.current
+
+    // Spring physics parameters
+    const springStrength = 15
+    const damping = 0.7
+    const threshold = 0.001
+
+    // Calculate forces for scale
+    const scaleDisplacement = state_.targetScale - state_.currentScale
+    const scaleSpringForce = scaleDisplacement * springStrength
+
+    // Calculate forces for position (X, Y, Z)
+    const positionDisplacement = [
+      state_.targetPosition[0] - state_.currentPosition[0],
+      state_.targetPosition[1] - state_.currentPosition[1],
+      state_.targetPosition[2] - state_.currentPosition[2],
+    ]
+    const positionSpringForce = positionDisplacement.map(
+      (d) => d * springStrength
+    )
+
+    // Update velocities separately
+    state_.scaleVelocity =
+      (state_.scaleVelocity + scaleSpringForce * delta) * damping
+
+    // Update position velocity for each axis
+    for (let i = 0; i < 3; i++) {
+      state_.positionVelocity[i] =
+        (state_.positionVelocity[i] + positionSpringForce[i] * delta) * damping
+    }
+
+    // Update current values
+    state_.currentScale += state_.scaleVelocity * delta * 50
+
+    // Update position for each axis
+    for (let i = 0; i < 3; i++) {
+      state_.currentPosition[i] += state_.positionVelocity[i] * delta * 50
+    }
+
+    // Check if animations should stop
+    const scaleAnimating =
+      Math.abs(scaleDisplacement) > threshold ||
+      Math.abs(state_.scaleVelocity) > threshold
+    const positionAnimating = positionDisplacement.some(
+      (d, i) =>
+        Math.abs(d) > threshold ||
+        Math.abs(state_.positionVelocity[i]) > threshold
+    )
+
+    // Stop animations when they reach threshold
+    if (!scaleAnimating) {
+      state_.currentScale = state_.targetScale
+      state_.scaleVelocity = 0
+    }
+
+    if (!positionAnimating) {
+      state_.currentPosition = [...state_.targetPosition]
+      state_.positionVelocity = [0, 0, 0]
+    }
+
+    // Apply transformations
+    meshRef.current.scale.setScalar(state_.currentScale)
+    meshRef.current.position.set(
+      state_.currentPosition[0],
+      state_.currentPosition[1],
+      state_.currentPosition[2]
+    )
+
+    // Only log when actually animating (optional - remove if you don't want any logs)
+    if (scaleAnimating || positionAnimating) {
+      console.log("Animating:", {
+        scale: state_.currentScale.toFixed(3),
+        position: state_.currentPosition.map((p) => p.toFixed(3)),
+      })
+    }
+  })
+
+  const handlePointerEnter = () => {
+    setHovered(true)
+    if (!animationState.current.isPressed) {
+      animationState.current.targetScale = 1.2
+    }
+  }
+
+  const handlePointerLeave = () => {
+    setHovered(false)
+    if (!animationState.current.isPressed) {
+      animationState.current.targetScale = 1
+    }
+  }
+
+  const handlePointerDown = () => {
+    animationState.current.isPressed = true
+    animationState.current.targetPosition = [0, 0, 0]
+  }
+
+  const handlePointerUp = () => {
+    animationState.current.isPressed = false
+    animationState.current.targetPosition = [0, 0, 0.1]
+  }
 
   return (
     <mesh
