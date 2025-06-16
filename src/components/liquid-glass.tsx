@@ -4,6 +4,42 @@ import { useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { useFrame } from "@react-three/fiber"
 
+// Enhanced animation configuration types
+interface AnimationConfig {
+  scale?: number
+  position?: [number, number, number]
+  duration?: number
+  easing?: "spring" | "linear" | "ease-in" | "ease-out"
+  springStrength?: number
+  damping?: number
+}
+
+interface AnimateProps {
+  click?: {
+    onPointerDown?: AnimationConfig
+    onPointerUp?: AnimationConfig
+    callback?: () => void
+  }
+  hover?: {
+    onPointerEnter?: AnimationConfig
+    onPointerLeave?: AnimationConfig
+    callback?: () => void
+  }
+  // For future use - continuous animations
+  position?: {
+    enabled?: boolean
+    path?: [number, number, number][]
+    speed?: number
+    loop?: boolean
+  }
+  scale?: {
+    enabled?: boolean
+    min?: number
+    max?: number
+    speed?: number
+  }
+}
+
 interface LiquidGlassProps {
   height: number
   width: number
@@ -16,15 +52,10 @@ interface LiquidGlassProps {
   color?: THREE.Color
   backside?: boolean
   animate?: AnimateProps
-}
-
-interface AnimateProps {
-  click?: () => void
-  hover?: () => void
-  position?: () => void
-  scale?: () => void
-  height?: () => void
-  width?: () => void
+  // Animation global settings
+  springStrength?: number
+  damping?: number
+  animationThreshold?: number
 }
 
 export default function LiquidGlass({
@@ -39,31 +70,20 @@ export default function LiquidGlass({
   color = new THREE.Color(1, 1, 1),
   backside = true,
   animate,
+  springStrength = 15,
+  damping = 0.7,
+  animationThreshold = 0.001,
 }: LiquidGlassProps) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const [hovered, setHovered] = useState(false)
 
-  const extrudeControls = useControls("extrude", {
-    steps: { value: 2, min: 1, max: 10, step: 1 },
-    depth: { value: 0, min: 0, max: 1, step: 0.01 },
-    bevelEnabled: { value: true, type: LevaInputs.BOOLEAN },
-    bevelThickness: { value: 0.02, min: 0, max: 1, step: 0.01 },
-    bevelSize: { value: 0.02, min: 0, max: 1, step: 0.01 },
-    bevelOffset: { value: 0, min: 0, max: 1, step: 0.01 },
-    bevelSegments: { value: 57, min: 1, max: 100, step: 1 },
-  })
-
-  const materialProps = useControls("transmission", {
-    thickness: { value: 0.35, min: 0, max: 3, step: 0.05 },
-  })
-
+  // * GEOMETRY
   const shape = useMemo(() => {
     const x = -width / 2
     const y = -height / 2
     const r = Math.min(borderRadius, width / 2, height / 2)
 
     const cornerSegments = 30
-
     const s = new THREE.Shape()
 
     const addSegmentedQuadraticCurve = (
@@ -102,9 +122,7 @@ export default function LiquidGlass({
       x + r,
       y + height
     )
-
     s.lineTo(x + width - r, y + height)
-
     addSegmentedQuadraticCurve(
       x + width - r,
       y + height,
@@ -113,28 +131,36 @@ export default function LiquidGlass({
       x + width,
       y + height - r
     )
-
     s.lineTo(x + width, y + r)
-
     addSegmentedQuadraticCurve(x + width, y + r, x + width, y, x + width - r, y)
-
     s.lineTo(x + r, y)
-
     addSegmentedQuadraticCurve(x + r, y, x, y, x, y + r)
 
     s.closePath()
-
     return s
   }, [width, height, borderRadius])
 
+  const extrudeControls = useControls("extrude", {
+    steps: { value: 2, min: 1, max: 10, step: 1 },
+    depth: { value: 0, min: 0, max: 1, step: 0.01 },
+    bevelEnabled: { value: true, type: LevaInputs.BOOLEAN },
+    bevelThickness: { value: 0.02, min: 0, max: 1, step: 0.01 },
+    bevelSize: { value: 0.04, min: 0, max: 1, step: 0.01 },
+    bevelOffset: { value: 0, min: 0, max: 1, step: 0.01 },
+    bevelSegments: { value: 57, min: 1, max: 100, step: 1 },
+  })
+
   const extrudeSettings = useMemo(
-    () => ({
-      ...extrudeControls,
-    }),
+    () => ({ ...extrudeControls }),
     [extrudeControls]
   )
 
-  // Fixed animation state with separate velocities
+  // * MATERIAL
+  const materialProps = useControls("transmission", {
+    thickness: { value: 0.35, min: 0, max: 3, step: 0.05 },
+  })
+
+  // * ANIMATIONS
   const animationState = useRef({
     targetScale: 1,
     currentScale: 1,
@@ -150,23 +176,52 @@ export default function LiquidGlass({
       number
     ],
     positionVelocity: [0, 0, 0] as [number, number, number],
+    basePosition: [position[0], position[1], position[2]] as [
+      number,
+      number,
+      number
+    ], // Store original position
     isPressed: false,
+    isHovered: false,
   })
 
-  // Fixed spring animation
+  // Helper function to apply animation config
+  const applyAnimationConfig = (
+    config: AnimationConfig,
+    baseScale: number = 1,
+    basePos?: [number, number, number]
+  ) => {
+    const state = animationState.current
+
+    if (config.scale !== undefined) {
+      state.targetScale = config.scale
+    }
+
+    if (config.position !== undefined) {
+      // Apply position relative to base position
+      const base = basePos || state.basePosition
+      state.targetPosition = [
+        base[0] + config.position[0],
+        base[1] + config.position[1],
+        base[2] + config.position[2],
+      ]
+    }
+  }
+
+  // Enhanced spring animation with configurable parameters
   useFrame((state, delta) => {
     if (!meshRef.current) return
 
     const state_ = animationState.current
 
-    // Spring physics parameters
-    const springStrength = 15
-    const damping = 0.7
-    const threshold = 0.001
+    // Use props or default values
+    const currentSpringStrength = springStrength
+    const currentDamping = damping
+    const threshold = animationThreshold
 
     // Calculate forces for scale
     const scaleDisplacement = state_.targetScale - state_.currentScale
-    const scaleSpringForce = scaleDisplacement * springStrength
+    const scaleSpringForce = scaleDisplacement * currentSpringStrength
 
     // Calculate forces for position (X, Y, Z)
     const positionDisplacement = [
@@ -175,17 +230,18 @@ export default function LiquidGlass({
       state_.targetPosition[2] - state_.currentPosition[2],
     ]
     const positionSpringForce = positionDisplacement.map(
-      (d) => d * springStrength
+      (d) => d * currentSpringStrength
     )
 
     // Update velocities separately
     state_.scaleVelocity =
-      (state_.scaleVelocity + scaleSpringForce * delta) * damping
+      (state_.scaleVelocity + scaleSpringForce * delta) * currentDamping
 
     // Update position velocity for each axis
     for (let i = 0; i < 3; i++) {
       state_.positionVelocity[i] =
-        (state_.positionVelocity[i] + positionSpringForce[i] * delta) * damping
+        (state_.positionVelocity[i] + positionSpringForce[i] * delta) *
+        currentDamping
     }
 
     // Update current values
@@ -224,38 +280,81 @@ export default function LiquidGlass({
       state_.currentPosition[1],
       state_.currentPosition[2]
     )
-
-    // Only log when actually animating (optional - remove if you don't want any logs)
-    if (scaleAnimating || positionAnimating) {
-      console.log("Animating:", {
-        scale: state_.currentScale.toFixed(3),
-        position: state_.currentPosition.map((p) => p.toFixed(3)),
-      })
-    }
   })
 
+  // Enhanced event handlers with configurable animations
   const handlePointerEnter = () => {
     setHovered(true)
+    animationState.current.isHovered = true
+
     if (!animationState.current.isPressed) {
-      animationState.current.targetScale = 1.2
+      if (animate?.hover?.onPointerEnter) {
+        applyAnimationConfig(animate.hover.onPointerEnter)
+      } else {
+        // Default hover animation
+        animationState.current.targetScale = 1.2
+      }
+
+      // Execute callback if provided
+      animate?.hover?.callback?.()
     }
   }
 
   const handlePointerLeave = () => {
     setHovered(false)
+    animationState.current.isHovered = false
+
     if (!animationState.current.isPressed) {
-      animationState.current.targetScale = 1
+      if (animate?.hover?.onPointerLeave) {
+        applyAnimationConfig(animate.hover.onPointerLeave)
+      } else {
+        // Default return to normal
+        animationState.current.targetScale = 1
+        animationState.current.targetPosition = [
+          ...animationState.current.basePosition,
+        ]
+      }
     }
   }
 
   const handlePointerDown = () => {
     animationState.current.isPressed = true
-    animationState.current.targetPosition = [0, 0, 0]
+
+    if (animate?.click?.onPointerDown) {
+      applyAnimationConfig(animate.click.onPointerDown)
+    } else {
+      // Default press animation
+      animationState.current.targetPosition[2] = position[2] - 0.1
+    }
+
+    // Execute callback if provided
+    animate?.click?.callback?.()
   }
 
   const handlePointerUp = () => {
     animationState.current.isPressed = false
-    animationState.current.targetPosition = [0, 0, 0.1]
+
+    if (animate?.click?.onPointerUp) {
+      applyAnimationConfig(animate.click.onPointerUp)
+    } else {
+      // Default return animation
+      if (animationState.current.isHovered && animate?.hover?.onPointerEnter) {
+        // Return to hover state
+        applyAnimationConfig(animate.hover.onPointerEnter)
+      } else if (animationState.current.isHovered) {
+        // Default hover state
+        animationState.current.targetScale = 1.2
+        animationState.current.targetPosition = [
+          ...animationState.current.basePosition,
+        ]
+      } else {
+        // Return to normal
+        animationState.current.targetScale = 1
+        animationState.current.targetPosition = [
+          ...animationState.current.basePosition,
+        ]
+      }
+    }
   }
 
   return (
