@@ -1,6 +1,6 @@
 import IdCard from "./components/IdCard"
 import IdCardBlack from "./components/IdCardBlack"
-import BirdCard from "./components/bird-card"
+import BirdCard from "./components/liquid-glass/liquid-glass-testing"
 
 export default function App() {
   return (
