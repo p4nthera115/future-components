@@ -5,7 +5,7 @@ import LiquidGlass from "./liquid-glass"
 import { Color } from "three"
 import CursorLight from "./cursor-light"
 
-export default function BirdCard() {
+export default function LiquidGlassTesting() {
   return (
     <div className="w-full h-dvh">
       <Leva collapsed />
