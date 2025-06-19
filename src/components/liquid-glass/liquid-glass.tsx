@@ -4,8 +4,9 @@ import { useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { useFrame } from "@react-three/fiber"
 
-// Enhanced animation configuration types
 interface AnimationConfig {
+  height?: number
+  width?: number
   scale?: number
   position?: [number, number, number]
   duration?: number
@@ -181,6 +182,11 @@ export default function LiquidGlass({
       number,
       number
     ], // Store original position
+    currentBasePosition: [position[0], position[1], position[2]] as [
+      number,
+      number,
+      number
+    ], // Track the current "rest" position - this can change
     isPressed: false,
     isHovered: false,
   })
@@ -189,7 +195,7 @@ export default function LiquidGlass({
   const applyAnimationConfig = (
     config: AnimationConfig,
     baseScale: number = 1,
-    basePos?: [number, number, number]
+    useAbsolutePosition: boolean = true
   ) => {
     const state = animationState.current
 
@@ -198,13 +204,20 @@ export default function LiquidGlass({
     }
 
     if (config.position !== undefined) {
-      // Apply position relative to base position
-      const base = basePos || state.basePosition
-      state.targetPosition = [
-        base[0] + config.position[0],
-        base[1] + config.position[1],
-        base[2] + config.position[2],
-      ]
+      if (useAbsolutePosition) {
+        // Use absolute world position
+        state.targetPosition = [...config.position]
+        // Update the current base position to this new position
+        // so hover states work from the new location
+        state.currentBasePosition = [...config.position]
+      } else {
+        // Apply position relative to original base position (legacy behavior)
+        state.targetPosition = [
+          state.basePosition[0] + config.position[0],
+          state.basePosition[1] + config.position[1],
+          state.basePosition[2] + config.position[2],
+        ]
+      }
     }
   }
 
@@ -289,9 +302,9 @@ export default function LiquidGlass({
 
     if (!animationState.current.isPressed) {
       if (animate?.hover?.onPointerEnter) {
-        applyAnimationConfig(animate.hover.onPointerEnter)
+        applyAnimationConfig(animate.hover.onPointerEnter, 1, false) // Use relative positioning for hover
       } else {
-        // Default hover animation
+        // Default hover animation - only scale, don't change position
         animationState.current.targetScale = 1.2
       }
 
@@ -306,12 +319,12 @@ export default function LiquidGlass({
 
     if (!animationState.current.isPressed) {
       if (animate?.hover?.onPointerLeave) {
-        applyAnimationConfig(animate.hover.onPointerLeave)
+        applyAnimationConfig(animate.hover.onPointerLeave, 1, false) // Use relative positioning for hover
       } else {
-        // Default return to normal
+        // Default return to normal - return to current base position, not original
         animationState.current.targetScale = 1
         animationState.current.targetPosition = [
-          ...animationState.current.basePosition,
+          ...animationState.current.currentBasePosition,
         ]
       }
     }
@@ -323,8 +336,9 @@ export default function LiquidGlass({
     if (animate?.click?.onPointerDown) {
       applyAnimationConfig(animate.click.onPointerDown)
     } else {
-      // Default press animation
-      animationState.current.targetPosition[2] = position[2] - 0.1
+      // Default press animation - relative to current position
+      animationState.current.targetPosition[2] =
+        animationState.current.currentBasePosition[2] - 0.1
     }
 
     // Execute callback if provided
@@ -335,23 +349,23 @@ export default function LiquidGlass({
     animationState.current.isPressed = false
 
     if (animate?.click?.onPointerUp) {
-      applyAnimationConfig(animate.click.onPointerUp)
+      applyAnimationConfig(animate.click.onPointerUp) // Absolute positioning for click events
     } else {
       // Default return animation
       if (animationState.current.isHovered && animate?.hover?.onPointerEnter) {
-        // Return to hover state
-        applyAnimationConfig(animate.hover.onPointerEnter)
+        // Return to hover state at current base position
+        applyAnimationConfig(animate.hover.onPointerEnter, 1, false)
       } else if (animationState.current.isHovered) {
         // Default hover state
         animationState.current.targetScale = 1.2
         animationState.current.targetPosition = [
-          ...animationState.current.basePosition,
+          ...animationState.current.currentBasePosition,
         ]
       } else {
-        // Return to normal
+        // Return to current base position (not original)
         animationState.current.targetScale = 1
         animationState.current.targetPosition = [
-          ...animationState.current.basePosition,
+          ...animationState.current.currentBasePosition,
         ]
       }
     }
