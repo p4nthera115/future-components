@@ -1,5 +1,6 @@
 import { Image, OrbitControls, Text } from "@react-three/drei"
 import LiquidGlass from "./liquid-glass/liquid-glass"
+import LiquidGlassV2 from "./liquid-glass/liquid-glass-v2"
 import { Canvas, extend } from "@react-three/fiber"
 import { easing, geometry } from "maath"
 import { useState } from "react"
@@ -13,10 +14,13 @@ export default function BirdCard() {
     <div className="h-dvh w-full ">
       <Canvas camera={{ position: [0, 0, 1] }}>
         <OrbitControls />
-        <Image url="/bird.jpeg" position={[0, 0, 0]} scale={0.5} zoom={0.6}>
-          <roundedPlaneGeometry args={[1, 1, 0.15]} />
-        </Image>
-        <LiquidGlass
+        <Image
+          url="/bird.jpeg"
+          position={[0, 0, 0]}
+          scale={0.5}
+          zoom={0.6}
+        ></Image>
+        {/* <LiquidGlass
           height={0.02}
           width={0.02}
           borderRadius={0.9}
@@ -43,6 +47,13 @@ export default function BirdCard() {
               },
             },
           }}
+        /> */}
+        <LiquidGlassV2
+          height={0.2}
+          width={0.2}
+          position={[0, 0, 0.04]}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         />
         {/* <Text
           font="./fonts/Geist/Geist-VariableFont_wght.ttf"

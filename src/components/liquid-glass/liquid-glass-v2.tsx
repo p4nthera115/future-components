@@ -21,26 +21,21 @@ interface LiquidGlassProps {
   whileTap?: AnimationValues
   whileActive?: AnimationValues
   whileDisabled?: AnimationValues
-  whileFocus?: AnimationValues
 
   active?: boolean
   disabled?: boolean
-  focused?: boolean
-
-  variants?: Variants
-  initial?: string
-  animate?: string
-  exit?: string
 
   onClick?: () => void
-  onToggle?: () => void
+  onToggle?: (active: boolean) => void
   onHoverStart?: () => void
   onHoverEnd?: () => void
   onTapStart?: () => void
   onTapEnd?: () => void
-  onAnimationComplete?: (variant?: string) => void
 
-  transition?: TransitionConfig
+  // Spring animation settings
+  springStrength?: number
+  damping?: number
+  animationThreshold?: number
 
   extrudeSettings?: {
     depth?: number
@@ -66,39 +61,12 @@ interface AnimationValues {
   rotateY?: number
   rotateZ?: number
   opacity?: number
-  transition?: TransitionConfig
-}
-
-interface TransitionConfig {
-  duration?: number
-  delay?: number
-  ease?: EasingFunction
-
-  stiffness?: number
-  damping?: number
-  mass?: number
-
-  bounceStiffness?: number
-  bounceDamping?: number
-}
-
-type EasingFunction =
-  | "linear"
-  | "ease"
-  | "ease-in"
-  | "ease-out"
-  | "ease-in-out"
-  | "spring"
-  | "bounce"
-
-interface Variants {
-  [key: string]: AnimationValues
 }
 
 const DEFAULT_PROPS = {
   width: 1,
   height: 1,
-  borderRadius: 0.1,
+  borderRadius: 0.05,
   position: [0, 0, 0] as [number, number, number],
   transmission: 1,
   roughness: 0,
@@ -106,19 +74,15 @@ const DEFAULT_PROPS = {
   chromaticAberration: 0,
   color: new THREE.Color(1, 1, 1),
   thickness: 0.35,
-  transition: {
-    duration: 0.2,
-    ease: "ease-out" as EasingFunction,
-    stiffness: 300,
-    damping: 20,
-    mass: 1,
-  } as TransitionConfig,
+  springStrength: 15,
+  damping: 0.7,
+  animationThreshold: 0.001,
   extrudeSettings: {
-    depth: 0.02,
+    depth: 0,
     bevelEnabled: true,
     bevelThickness: 0.01,
     bevelSize: 0.02,
-    bevelSegments: 8,
+    bevelSegments: 80,
   },
 }
 
@@ -129,31 +93,9 @@ const DEFAULT_ANIMATIONS = {
   whileDisabled: { scale: 0.9, opacity: 0.5 },
 }
 
-const easingFunctions = {
-  linear: (t: number) => t,
-  ease: (t: number) => t * t * (3 - 2 * t),
-  "ease-in": (t: number) => t * t,
-  "ease-out": (t: number) => t * (2 - t),
-  "ease-in-out": (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
-  spring: (t: number) => 1 - Math.cos(t * Math.PI * 0.5),
-  bounce: (t: number) => {
-    if (t < 1 / 2.75) return 7.5625 * t * t
-    if (t < 2 / 2.75) return 7.5625 * (t -= 1.5 / 2.75) * t + 0.75
-    if (t < 2.5 / 2.75) return 7.5625 * (t -= 2.25 / 2.75) * t + 0.9375
-    return 7.5625 * (t -= 2.625 / 2.75) * t + 0.984375
-  },
-}
-
 function parseColor(color: string | THREE.Color): THREE.Color {
   if (color instanceof THREE.Color) return color
   return new THREE.Color(color)
-}
-
-function mergeTransitions(
-  global?: TransitionConfig,
-  local?: TransitionConfig
-): TransitionConfig {
-  return { ...DEFAULT_PROPS.transition, ...global, ...local }
 }
 
 export default function LiquidGlassV2({
@@ -173,16 +115,9 @@ export default function LiquidGlassV2({
   whileTap,
   whileActive,
   whileDisabled,
-  whileFocus,
 
   active = false,
   disabled = false,
-  focused = false,
-
-  variants,
-  initial = "idle",
-  animate,
-  exit,
 
   onClick,
   onToggle,
@@ -190,9 +125,10 @@ export default function LiquidGlassV2({
   onHoverEnd,
   onTapStart,
   onTapEnd,
-  onAnimationComplete,
 
-  transition: globalTransition = DEFAULT_PROPS.transition,
+  springStrength = DEFAULT_PROPS.springStrength,
+  damping = DEFAULT_PROPS.damping,
+  animationThreshold = DEFAULT_PROPS.animationThreshold,
 
   extrudeSettings = DEFAULT_PROPS.extrudeSettings,
 
@@ -202,237 +138,257 @@ export default function LiquidGlassV2({
   const meshRef = useRef<THREE.Mesh>(null)
   const [isHovered, setIsHovered] = useState(false)
   const [isPressed, setIsPressed] = useState(false)
-  const [isFocused, setIsFocused] = useState(focused)
 
+  // Simplified animation state using spring physics from v1
   const animationState = useRef({
-    current: {
-      x: position[0],
-      y: position[1],
-      z: position[2],
-      scale: 1,
-      scaleX: 1,
-      scaleY: 1,
-      scaleZ: 1,
-      rotateX: 0,
-      rotateY: 0,
-      rotateZ: 0,
-      opacity: 1,
-    },
-    target: {
-      x: position[0],
-      y: position[1],
-      z: position[2],
-      scale: 1,
-      scaleX: 1,
-      scaleY: 1,
-      scaleZ: 1,
-      rotateX: 0,
-      rotateY: 0,
-      rotateZ: 0,
-      opacity: 1,
-    },
-    velocity: {
-      x: 0,
-      y: 0,
-      z: 0,
-      scale: 0,
-      scaleX: 0,
-      scaleY: 0,
-      scaleZ: 0,
-      rotateX: 0,
-      rotateY: 0,
-      rotateZ: 0,
-      opacity: 0,
-    },
-    activeTransition: mergeTransitions(globalTransition),
-    animationProgress: 0,
-    animatingTo: initial,
+    // Current values
+    currentScale: 1,
+    currentPosition: [...position] as [number, number, number],
+    currentRotation: [0, 0, 0] as [number, number, number],
+    currentOpacity: 1,
+
+    // Target values
+    targetScale: 1,
+    targetPosition: [...position] as [number, number, number],
+    targetRotation: [0, 0, 0] as [number, number, number],
+    targetOpacity: 1,
+
+    // Velocities for spring physics
+    scaleVelocity: 0,
+    positionVelocity: [0, 0, 0] as [number, number, number],
+    rotationVelocity: [0, 0, 0] as [number, number, number],
+    opacityVelocity: 0,
+
+    // Base position for relative animations
+    basePosition: [...position] as [number, number, number],
   })
 
-  // * GEOMETRY
+  // * GEOMETRY (same as before)
   const shape = useMemo(() => {
     const x = -width / 2
     const y = -height / 2
-    const r = Math.min(
-      (borderRadius * Math.min(width, height)) / 2,
-      width / 2,
-      height / 2
+    const r = Math.min(borderRadius, width / 2, height / 2)
+
+    const cornerSegments = 50
+    const s = new THREE.Shape()
+
+    const addSegmentedQuadraticCurve = (
+      startX: number,
+      startY: number,
+      controlX: number,
+      controlY: number,
+      endX: number,
+      endY: number
+    ) => {
+      for (let i = 0; i <= cornerSegments; i++) {
+        const t = i / cornerSegments
+        const t2 = t * t
+        const invT = 1 - t
+        const invT2 = invT * invT
+
+        const px = invT2 * startX + 2 * invT * t * controlX + t2 * endX
+        const py = invT2 * startY + 2 * invT * t * controlY + t2 * endY
+
+        if (i === 0) {
+          s.lineTo(px, py)
+        } else {
+          s.lineTo(px, py)
+        }
+      }
+    }
+
+    s.moveTo(x, y + r)
+    s.lineTo(x, y + height - r)
+    addSegmentedQuadraticCurve(
+      x,
+      y + height - r,
+      x,
+      y + height,
+      x + r,
+      y + height
     )
+    s.lineTo(x + width - r, y + height)
+    addSegmentedQuadraticCurve(
+      x + width - r,
+      y + height,
+      x + width,
+      y + height,
+      x + width,
+      y + height - r
+    )
+    s.lineTo(x + width, y + r)
+    addSegmentedQuadraticCurve(x + width, y + r, x + width, y, x + width - r, y)
+    s.lineTo(x + r, y)
+    addSegmentedQuadraticCurve(x + r, y, x, y, x, y + r)
+    s.closePath()
 
-    const shape = new THREE.Shape()
-
-    shape.moveTo(x, y + r)
-    shape.lineTo(x, y + height - r)
-    shape.quadraticCurveTo(x, y + height, x + r, y + height)
-    shape.lineTo(x + width - r, y + height)
-    shape.quadraticCurveTo(x + width, y + height, x + width, y + height - r)
-    shape.lineTo(x + width, y + r)
-    shape.quadraticCurveTo(x + width, y, x + width - r, y)
-    shape.lineTo(x + r, y)
-    shape.quadraticCurveTo(x, y, x, y + r)
-
-    return shape
+    return s
   }, [width, height, borderRadius])
 
-  // * ANIMATIONS
+  // Get current animation based on state
   const getCurrentAnimation = useCallback((): AnimationValues => {
-    // Priority order: disabled > pressed > hovered > active > focused > default
-
-    if (disabled && (whileDisabled || variants?.disabled)) {
-      return (
-        whileDisabled || variants?.disabled || DEFAULT_ANIMATIONS.whileDisabled
-      )
+    if (disabled) {
+      return whileDisabled || DEFAULT_ANIMATIONS.whileDisabled
     }
-
-    if (isPressed && (whileTap || variants?.tap)) {
-      return whileTap || variants?.tap || DEFAULT_ANIMATIONS.whileTap
+    if (isPressed) {
+      return whileTap || DEFAULT_ANIMATIONS.whileTap
     }
-
-    if (isHovered && (whileHover || variants?.hovered)) {
-      return whileHover || variants?.hovered || DEFAULT_ANIMATIONS.whileHover
+    if (isHovered) {
+      return whileHover || DEFAULT_ANIMATIONS.whileHover
     }
-
-    if (active && (whileActive || variants?.active)) {
-      return whileActive || variants?.active || DEFAULT_ANIMATIONS.whileActive
+    if (active) {
+      return whileActive || DEFAULT_ANIMATIONS.whileActive
     }
-
-    if (isFocused && (whileFocus || variants?.focus)) {
-      return whileFocus || variants?.focus || {}
-    }
-
-    // specified variants
-    if (animate && variants?.[animate]) {
-      return variants[animate]
-    }
-
-    // default variants state
-    if (variants?.[initial]) {
-      return variants[initial]
-    }
-
     return {}
   }, [
     disabled,
     isPressed,
     isHovered,
     active,
-    isFocused,
-    animate,
-    variants,
     whileDisabled,
     whileTap,
-    whileActive,
-    whileFocus,
     whileHover,
+    whileActive,
   ])
 
-  const applyAnimation = useCallback(
-    (animation: AnimationValues) => {
-      const state = animationState.current
-      const basePos = position
+  // Apply animation targets
+  const applyAnimation = useCallback((animation: AnimationValues) => {
+    const state = animationState.current
 
-      // set default state
-      state.target.x = animation.x !== undefined ? animation.x : basePos[0]
-      state.target.y = animation.y !== undefined ? animation.y : basePos[1]
-      state.target.z = animation.z !== undefined ? animation.z : basePos[2]
-      state.target.scale = animation.scale !== undefined ? animation.scale : 1
-      state.target.scaleX =
-        animation.scaleX !== undefined ? animation.scaleX : animation.scale || 1
-      state.target.scaleY =
-        animation.scaleY !== undefined ? animation.scaleY : animation.scale || 1
-      state.target.scaleZ =
-        animation.scaleZ !== undefined ? animation.scaleZ : animation.scale || 1
-      state.target.rotateX = animation.rotateX || 0
-      state.target.rotateY = animation.rotateY || 0
-      state.target.rotateZ = animation.rotateZ || 0
-      state.target.opacity =
-        animation.opacity !== undefined ? animation.opacity : 1
+    // Set targets
+    state.targetScale = animation.scale ?? 1
+    state.targetPosition = [
+      animation.x ?? state.basePosition[0],
+      animation.y ?? state.basePosition[1],
+      animation.z ?? state.basePosition[2],
+    ]
+    state.targetRotation = [
+      animation.rotateX ?? 0,
+      animation.rotateY ?? 0,
+      animation.rotateZ ?? 0,
+    ]
+    state.targetOpacity = animation.opacity ?? 1
+  }, [])
 
-      state.activeTransition = mergeTransitions(
-        globalTransition,
-        animation.transition
-      )
-      state.animationProgress = 0
-    },
-    [position, globalTransition]
-  )
-
-  // update animation on state change
+  // Update animation when state changes
   useEffect(() => {
     const currentAnimation = getCurrentAnimation()
     applyAnimation(currentAnimation)
   }, [getCurrentAnimation, applyAnimation])
 
+  // Spring animation frame loop (simplified from v1)
   useFrame((_, delta) => {
     if (!meshRef.current) return
 
     const state = animationState.current
-    const transition = state.activeTransition
 
-    const progressDelta = delta / (transition.duration || 0.2)
-    state.animationProgress = Math.min(
-      state.animationProgress + progressDelta,
-      1
-    )
+    // Spring physics for scale
+    const scaleDisplacement = state.targetScale - state.currentScale
+    const scaleSpringForce = scaleDisplacement * springStrength
+    state.scaleVelocity =
+      (state.scaleVelocity + scaleSpringForce * delta) * damping
+    state.currentScale += state.scaleVelocity * delta * 50
 
-    const easingFn = easingFunctions[transition.ease || "ease-out"]
-    const easedProgress = easingFn(state.animationProgress)
-
-    Object.keys(state.current).forEach((key) => {
-      const currentVal = state.current[key as keyof typeof state.current]
-      const targetVal = state.target[key as keyof typeof state.target]
-
-      if (transition.ease === "spring") {
-        const stiffness = transition.stiffness || 300
-        const damping = transition.damping || 20
-        const mass = transition.mass || 1
-
-        const force = (targetVal - currentVal) * stiffness
-        state.velocity[key as keyof typeof state.velocity] =
-          state.velocity[key as keyof typeof state.velocity] +
-          (force / mass) * delta * (1 - damping * delta)
-
-        state.current[key as keyof typeof state.current] +=
-          state.velocity[key as keyof typeof state.velocity] * delta
-      } else {
-        state.current[key as keyof typeof state.current] =
-          currentVal + (targetVal - currentVal) * easedProgress
-      }
-    })
-
-    meshRef.current.position.set(
-      state.current.x,
-      state.current.y,
-      state.current.z
-    )
-    meshRef.current.scale.set(
-      state.current.scaleX,
-      state.current.scaleY,
-      state.current.scaleZ
-    )
-    meshRef.current.rotation.set(
-      state.current.rotateX,
-      state.current.rotateY,
-      state.current.rotateZ
-    )
-
-    if (meshRef.current.material && "opacity" in meshRef.current.material) {
-      meshRef.current.material.opacity = state.current.opacity
-      meshRef.current.material.transparent = state.current.opacity < 1
+    // Spring physics for position
+    for (let i = 0; i < 3; i++) {
+      const positionDisplacement =
+        state.targetPosition[i] - state.currentPosition[i]
+      const positionSpringForce = positionDisplacement * springStrength
+      state.positionVelocity[i] =
+        (state.positionVelocity[i] + positionSpringForce * delta) * damping
+      state.currentPosition[i] += state.positionVelocity[i] * delta * 50
     }
 
-    if (state.animationProgress >= 1 && onAnimationComplete) {
-      onAnimationComplete(state.animatingTo)
+    // Spring physics for rotation
+    for (let i = 0; i < 3; i++) {
+      const rotationDisplacement =
+        state.targetRotation[i] - state.currentRotation[i]
+      const rotationSpringForce = rotationDisplacement * springStrength
+      state.rotationVelocity[i] =
+        (state.rotationVelocity[i] + rotationSpringForce * delta) * damping
+      state.currentRotation[i] += state.rotationVelocity[i] * delta * 50
+    }
+
+    // Spring physics for opacity
+    const opacityDisplacement = state.targetOpacity - state.currentOpacity
+    const opacitySpringForce = opacityDisplacement * springStrength
+    state.opacityVelocity =
+      (state.opacityVelocity + opacitySpringForce * delta) * damping
+    state.currentOpacity += state.opacityVelocity * delta * 50
+
+    // Stop small movements
+    if (
+      Math.abs(scaleDisplacement) < animationThreshold &&
+      Math.abs(state.scaleVelocity) < animationThreshold
+    ) {
+      state.currentScale = state.targetScale
+      state.scaleVelocity = 0
+    }
+
+    // Apply transformations
+    meshRef.current.scale.setScalar(state.currentScale)
+    meshRef.current.position.set(...state.currentPosition)
+    meshRef.current.rotation.set(...state.currentRotation)
+
+    if (meshRef.current.material && "opacity" in meshRef.current.material) {
+      meshRef.current.material.opacity = state.currentOpacity
+      meshRef.current.material.transparent = state.currentOpacity < 1
     }
   })
 
   // * EVENT HANDLERS
-
   const handlePointerEnter = useCallback(() => {
     if (disabled) return
     setIsHovered(true)
     onHoverStart?.()
   }, [disabled, onHoverStart])
 
-  return <div>LiquidGlassV2</div>
+  const handlePointerLeave = useCallback(() => {
+    setIsHovered(false)
+    onHoverEnd?.()
+  }, [onHoverEnd])
+
+  const handlePointerDown = useCallback(() => {
+    if (disabled) return
+    setIsPressed(true)
+    onTapStart?.()
+  }, [disabled, onTapStart])
+
+  const handlePointerUp = useCallback(() => {
+    if (disabled) return
+    setIsPressed(false)
+    onTapEnd?.()
+
+    if (onClick) {
+      onClick()
+    }
+
+    if (onToggle) {
+      onToggle(!active)
+    }
+  }, [disabled, onTapEnd, onClick, onToggle, active])
+
+  return (
+    <mesh
+      ref={meshRef}
+      position={position}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      aria-label={ariaLabel}
+      receiveShadow
+      castShadow
+    >
+      <extrudeGeometry args={[shape, extrudeSettings]} />
+      <MeshTransmissionMaterial
+        transmission={transmission}
+        roughness={roughness}
+        ior={ior}
+        chromaticAberration={chromaticAberration}
+        thickness={thickness}
+        background={parseColor(color)}
+      />
+    </mesh>
+  )
 }
