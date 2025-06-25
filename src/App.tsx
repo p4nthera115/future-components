@@ -1,6 +1,7 @@
 import IdCard from "./components/IdCard"
 import IdCardBlack from "./components/IdCardBlack"
-import BirdCard from "./components/bird-card"
+// import BirdCard from "./components/bird-card"
+import IosToggle from "./components/ios-toggle"
 // import LiquidGlassTesting from "./components/liquid-glass/liquid-glass-testing"
 
 export default function App() {
@@ -9,7 +10,8 @@ export default function App() {
       <IdCard />
       <IdCardBlack />
       {/* <LiquidGlassTesting /> */}
-      <BirdCard />
+      {/* <BirdCard /> */}
+      <IosToggle />
     </div>
   )
 }
