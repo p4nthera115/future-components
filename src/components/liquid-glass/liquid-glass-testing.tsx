@@ -60,7 +60,7 @@ export default function LiquidGlassTesting() {
           roughness={0}
         /> */}
 
-        <LiquidGlass
+        {/* <LiquidGlass
           color={new Color(3, 3, 3)}
           height={0.3}
           width={0.8}
@@ -93,7 +93,7 @@ export default function LiquidGlassTesting() {
           }}
           springStrength={10}
           damping={0.6}
-        />
+        /> */}
 
         <LiquidGlass
           height={0.5}
@@ -102,7 +102,7 @@ export default function LiquidGlassTesting() {
           position={[0, 0.0, 0.1]}
           ior={1.4}
           backside={false}
-          roughness={0}
+          roughness={1.1}
           color={new Color(0, 3, 3)}
           animate={{
             hover: {
@@ -132,7 +132,7 @@ export default function LiquidGlassTesting() {
           damping={0.8}
         />
 
-        <LiquidGlass
+        {/* <LiquidGlass
           height={0.4}
           width={0.6}
           borderRadius={0.1}
@@ -193,7 +193,7 @@ export default function LiquidGlassTesting() {
           damping={0.7}
           chromaticAberration={0.1}
           color={new Color(2, 2, 2)}
-        />
+        /> */}
 
         {/* <mesh receiveShadow position={[0, 0, -0.1]}>
           <planeGeometry args={[4, 4]} />
