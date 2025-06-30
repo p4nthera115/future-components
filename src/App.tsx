@@ -1,3 +1,4 @@
+import HumanTouch from "./components/human-touch"
 import IdCard from "./components/IdCard"
 import IdCardBlack from "./components/IdCardBlack"
 // import IBot from "./components/iBot"
@@ -12,6 +13,7 @@ export default function App() {
       {/* <LiquidGlassTesting /> */}
       {/* <IBot /> */}
       {/* <IosToggle /> */}
+      <HumanTouch />
     </div>
   )
 }
