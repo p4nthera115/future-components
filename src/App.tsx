@@ -1,7 +1,7 @@
 import HumanTouch from "./components/human-touch"
 import IdCard from "./components/IdCard"
 import IdCardBlack from "./components/IdCardBlack"
-// import IBot from "./components/iBot"
+import IBot from "./components/iBot"
 import IosToggle from "./components/ios-toggle"
 import LiquidGlassTesting from "./components/liquid-glass/liquid-glass-testing"
 

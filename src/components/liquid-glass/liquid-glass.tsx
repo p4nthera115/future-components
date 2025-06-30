@@ -81,7 +81,7 @@ const DEFAULT_PROPS = {
   chromaticAberration: 0,
   anisotropicBlur: 0,
   blur: 1000,
-  color: new THREE.Color(1, 1, 1),
+  color: new THREE.Color(2, 2, 2),
   thickness: 0.35,
   wireframe: false,
   springStrength: 15,
