@@ -1,8 +1,8 @@
 import { useControls } from "leva"
 import { useEffect, useRef, useState } from "react"
-import { Color, DirectionalLight } from "three"
+import { Color, DirectionalLight } 
 
-export default function CursorLight() {
+export default function CursorLight({}) {
   const lightRef = useRef<DirectionalLight>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
 
