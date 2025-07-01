@@ -1,9 +1,10 @@
-import HumanTouch from "./components/human-touch"
+import HumanTouch from "./components/liquid-glass-components/human-touch"
 import IdCard from "./components/IdCard"
 import IdCardBlack from "./components/IdCardBlack"
-import IBot from "./components/iBot"
-import IosToggle from "./components/ios-toggle"
+import IBot from "./components/liquid-glass-components/iBot"
+import IosToggle from "./components/liquid-glass-components/ios-toggle"
 import LiquidGlassTesting from "./components/liquid-glass/liquid-glass-testing"
+import FlyingAstronaut from "./components/liquid-glass-components/flying-astronaut"
 
 export default function App() {
   return (
@@ -13,7 +14,8 @@ export default function App() {
       {/* <LiquidGlassTesting /> */}
       {/* <IBot /> */}
       {/* <IosToggle /> */}
-      <HumanTouch />
+      {/* <HumanTouch /> */}
+      <FlyingAstronaut />
     </div>
   )
 }

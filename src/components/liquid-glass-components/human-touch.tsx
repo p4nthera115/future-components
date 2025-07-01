@@ -1,5 +1,5 @@
 import { Canvas, extend } from "@react-three/fiber"
-import LiquidGlass from "./liquid-glass/liquid-glass"
+import LiquidGlass from "../liquid-glass/liquid-glass"
 import { OrbitControls, VideoTexture } from "@react-three/drei"
 import { geometry } from "maath"
 import { useState } from "react"
