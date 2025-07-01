@@ -92,7 +92,7 @@ const DEFAULT_PROPS = {
     bevelEnabled: true,
     bevelThickness: 0.02,
     bevelSize: 0.03,
-    bevelSegments: 57,
+    bevelSegments: 10,
   },
 }
 
