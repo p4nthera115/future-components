@@ -11,6 +11,7 @@ extend({ RoundedPlaneGeometry: geometry.RoundedPlaneGeometry })
 export default function FlyingAstronaut() {
   const [active, setActive] = useState(false)
   const [hover, setHover] = useState(false)
+
   return (
     <div className="h-dvh w-dvw flex items-center justify-center relative">
       <Canvas camera={{ position: [0, 0, 2] }}>
@@ -70,13 +71,13 @@ export default function FlyingAstronaut() {
                 ? "h-60 -translate-y-4 rounded-[48px] w-81 -translate-x-40.5 duration-300"
                 : "h-17.5 translate-y-37.5 w-81 -translate-x-40.5 rounded-full duration-50"
             }  flex items-center ${
-              hover ? "px-2 py-4" : "p-4"
+              active && hover ? "px-2 py-4" : "p-4"
             } text-3xl transition-all flex-col relative`}
           >
             <div
               className={`flex justify-between items-center w-full transition-all ${
                 active ? "py-1" : "p-0"
-              }`}
+              } ${hover && !active ? "scale-110" : ""} duration-300`}
             >
               <div className="flex flex-col items-start">
                 <p
